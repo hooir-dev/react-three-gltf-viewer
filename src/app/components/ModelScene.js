@@ -598,7 +598,8 @@ export default function ModelScene() {
   const [isShow, setIsShow] = useState(true);
   const [scale, setScale] = useState(1);
   const scaleStep = 0.1;
-  const [modelUrl, setModelUrl] = useState("/earth.glb");
+  const [modelUrl, setModelUrl] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // 更新配置状态，修改默认背景颜色
   const [config, setConfig] = useState({
@@ -713,7 +714,30 @@ export default function ModelScene() {
     });
   };
 
-  // 添加文件上传处理函数
+  // 添加拖拽处理函数
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.name.toLowerCase().endsWith('.glb')) {
+        const objectUrl = URL.createObjectURL(file);
+        setModelUrl(objectUrl);
+      }
+    }
+  };
+
+  // 文件上传处理函数
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -1025,99 +1049,127 @@ export default function ModelScene() {
       className="relative w-full h-full flex justify-center items-start bg-[#232323]"
     >
       <div className="w-full h-full">
-        <Canvas
-          shadows={config.shadows}
-          gl={{
-            preserveDrawingBuffer: true,
-            toneMapping: THREE[`${config.toneMapping}ToneMapping`],
-            outputColorSpace: THREE.SRGBColorSpace,
-            antialias: true,
-            alpha: true,
-          }}
-          className="bg-[#121316]"
-          onCreated={({ gl, scene }) => {
-            gl.outputColorSpace = THREE.SRGBColorSpace;
-            gl.physicallyCorrectLights = config.punctualLights;
-            gl.toneMappingExposure = Math.pow(2, config.exposure);
+        {!modelUrl ? (
+          // 当没有模型时显示上传区域
+          <div 
+            className={`w-full h-full flex flex-col justify-center items-center ${isDragging ? 'bg-[#1a1a1a]' : 'bg-[#121316]'}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <div className={`p-8 rounded-xl border-2 border-dashed ${isDragging ? 'border-[rgb(43,153,255)] bg-[rgba(43,153,255,0.05)]' : 'border-white/20'} flex flex-col items-center transition-all duration-200`}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-white/30 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <p className="text-white/60 text-lg mb-2">Drag GLB file here</p>
+              <p className="text-white/40 text-sm mb-4">or</p>
+              <label className="px-4 py-2 bg-[rgba(255,255,255,0.05)] rounded-lg text-[rgba(255,255,255,0.7)] text-sm cursor-pointer hover:bg-[rgba(255,255,255,0.1)] transition-all duration-200">
+                Choose File
+                <input
+                  type="file"
+                  accept=".glb"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </div>
+        ) : (
+          // 当有模型时显示 Canvas
+          <Canvas
+            shadows={config.shadows}
+            gl={{
+              preserveDrawingBuffer: true,
+              toneMapping: THREE[`${config.toneMapping}ToneMapping`],
+              outputColorSpace: THREE.SRGBColorSpace,
+              antialias: true,
+              alpha: true,
+            }}
+            className="bg-[#121316]"
+            onCreated={({ gl, scene }) => {
+              gl.outputColorSpace = THREE.SRGBColorSpace;
+              gl.physicallyCorrectLights = config.punctualLights;
+              gl.toneMappingExposure = Math.pow(2, config.exposure);
 
-            // 设置场景背景为默认颜色
-            scene.background = new THREE.Color(0x2f2f2f);
+              // 设置场景背景为默认颜色
+              scene.background = new THREE.Color(0x2f2f2f);
 
-            // 创建 PMREMGenerator
-            const pmremGenerator = new THREE.PMREMGenerator(gl);
+              // 创建 PMREMGenerator
+              const pmremGenerator = new THREE.PMREMGenerator(gl);
 
-            // 使用 THREE.RoomEnvironment 作为中性环境
-            const roomEnvironment = new RoomEnvironment();
-            const envMap = pmremGenerator.fromScene(roomEnvironment).texture;
-            scene.environment = envMap;
+              // 使用 THREE.RoomEnvironment 作为中性环境
+              const roomEnvironment = new RoomEnvironment();
+              const envMap = pmremGenerator.fromScene(roomEnvironment).texture;
+              scene.environment = envMap;
 
-            pmremGenerator.dispose();
-            roomEnvironment.dispose();
-          }}
-        >
-          <Suspense fallback={null}>
-            <Scene config={config} />
-            <PerformanceStatsUpdater stats={stats} />
-            <PerspectiveCamera
-              ref={cameraRef}
-              makeDefault
-              position={sceneSettings.camera.position}
-              rotation={
-                sceneSettings.camera.rotation?.map((r) =>
-                  THREE.MathUtils.degToRad(r)
-                ) || [0, 0, 0]
-              }
-              fov={sceneSettings.camera.fov}
-              near={sceneSettings.camera.near}
-              far={sceneSettings.camera.far}
-              zoom={sceneSettings.camera.zoom}
-            />
+              pmremGenerator.dispose();
+              roomEnvironment.dispose();
+            }}
+          >
+            <Suspense fallback={null}>
+              <Scene config={config} />
+              <PerformanceStatsUpdater stats={stats} />
+              <PerspectiveCamera
+                ref={cameraRef}
+                makeDefault
+                position={sceneSettings.camera.position}
+                rotation={
+                  sceneSettings.camera.rotation?.map((r) =>
+                    THREE.MathUtils.degToRad(r)
+                  ) || [0, 0, 0]
+                }
+                fov={sceneSettings.camera.fov}
+                near={sceneSettings.camera.near}
+                far={sceneSettings.camera.far}
+                zoom={sceneSettings.camera.zoom}
+              />
 
-            <ambientLight
-              intensity={config.ambientIntensity}
-              color={config.ambientColor}
-            />
-            <directionalLight
-              position={[1, 2, -1]}
-              intensity={config.directIntensity}
-              color={config.directColor}
-              castShadow={config.shadows}
-            />
+              <ambientLight
+                intensity={config.ambientIntensity}
+                color={config.ambientColor}
+              />
+              <directionalLight
+                position={[1, 2, -1]}
+                intensity={config.directIntensity}
+                color={config.directColor}
+                castShadow={config.shadows}
+              />
 
-            <Model
-              ref={modelRef}
-              rotationX={rotation.x}
-              rotationY={rotation.y}
-              rotationZ={rotation.z}
-              scale={scale}
-              position={[position.x, position.y, position.z]}
-              config={config}
-              onLoad={handleModelLoad}
-              modelUrl={modelUrl}
-              currentAnimation={currentAnimation}
-              isPlaying={isPlaying}
-              onAnimationChange={setCurrentAnimation}
-              onPlayingChange={setIsPlaying}
-            />
+              <Model
+                ref={modelRef}
+                rotationX={rotation.x}
+                rotationY={rotation.y}
+                rotationZ={rotation.z}
+                scale={scale}
+                position={[position.x, position.y, position.z]}
+                config={config}
+                onLoad={handleModelLoad}
+                modelUrl={modelUrl}
+                currentAnimation={currentAnimation}
+                isPlaying={isPlaying}
+                onAnimationChange={setCurrentAnimation}
+                onPlayingChange={setIsPlaying}
+              />
 
-            <OrbitControls
-              ref={controlsRef}
-              camera={cameraRef.current}
-              enablePan={orbitControlsEnabled}
-              enableZoom={orbitControlsEnabled}
-              enableRotate={orbitControlsEnabled && !config.kiosk}
-              autoRotate={config.autoRotate && orbitControlsEnabled}
-              screenSpacePanning={config.screenSpacePanning}
-              minDistance={5}
-              maxDistance={10}
-              dampingFactor={0.05}
-              rotateSpeed={0.5}
-              up={[0, 1, 0]}
-              enableDamping={orbitControlsEnabled}
-              target={new THREE.Vector3(...sceneSettings.camera.target)}
-            />
-          </Suspense>
-        </Canvas>
+              <OrbitControls
+                ref={controlsRef}
+                camera={cameraRef.current}
+                enablePan={orbitControlsEnabled}
+                enableZoom={orbitControlsEnabled}
+                enableRotate={orbitControlsEnabled && !config.kiosk}
+                autoRotate={config.autoRotate && orbitControlsEnabled}
+                screenSpacePanning={config.screenSpacePanning}
+                minDistance={5}
+                maxDistance={10}
+                dampingFactor={0.05}
+                rotateSpeed={0.5}
+                up={[0, 1, 0]}
+                enableDamping={orbitControlsEnabled}
+                target={new THREE.Vector3(...sceneSettings.camera.target)}
+              />
+            </Suspense>
+          </Canvas>
+        )}
       </div>
 
       <motion.div
@@ -1139,7 +1191,7 @@ export default function ModelScene() {
           <div className="w-full p-4 border-b border-white/5">
             <div className="space-y-2 mt-2">
               <label className="flex flex-col items-center px-4 py-2 bg-[rgba(255,255,255,0.05)] rounded-lg text-[rgba(255,255,255,0.5)] text-[11px] text-white cursor-pointer hover:bg-[rgba(255,255,255,0.03)]">
-                <span>Choose file</span>
+                <span>Choose File</span>
                 <input
                   type="file"
                   accept=".glb"
@@ -1147,9 +1199,14 @@ export default function ModelScene() {
                   className="hidden"
                 />
               </label>
-              {/* <div className="text-sm text-white/60">
-                {modelUrl.split("/").pop()}
-              </div> */}
+              {modelUrl && (
+                <button 
+                  onClick={() => setModelUrl(null)}
+                  className="w-full mt-2 px-4 py-2 bg-[rgba(255,255,255,0.05)] rounded-lg text-[rgba(255,255,255,0.5)] text-[11px] hover:bg-[rgba(255,0,0,0.2)]"
+                >
+                  Remove Model
+                </button>
+              )}
             </div>
           </div>
 
@@ -1164,7 +1221,7 @@ export default function ModelScene() {
                   onChange={toggleOrbitControls}
                   className="mr-2"
                 />
-                启用鼠标控制
+                Enable Mouse Control
               </label>
             </div>
 
@@ -1341,14 +1398,14 @@ export default function ModelScene() {
                   onClick={resetCameraToViewTarget}
                   className="w-full px-2 py-1 text-[11px] bg-[rgba(255,255,255,0.05)] rounded-lg text-[rgba(255,255,255,0.6)] leading-4 hover:bg-[rgb(43,153,255)] hover:text-white"
                 >
-                  重置相机视角
+                  Reset Camera View
                 </button>
 
                 <button
                   onClick={getCameraData}
                   className="w-full px-2 py-1 text-[11px] bg-[rgba(255,255,255,0.05)] rounded-lg text-[rgba(255,255,255,0.6)] leading-4 hover:bg-[rgb(43,153,255)] hover:text-white"
                 >
-                  查看相机参数
+                  View Camera Parameters
                 </button>
               </div>
             </div>
@@ -1362,16 +1419,16 @@ export default function ModelScene() {
                   onChange={(e) => handleConfigChange("showDebug", e.target.checked)}
                   className="mr-2"
                 />
-                显示调试信息
+                Show Debug Information
               </label>
 
               {/* 调试信息 */}
               {config.showDebug && (
                 <div className="p-4 text-[rgba(255,255,255,0.6)] text-[11px]">
-                  <div>相机位置: {sceneSettings.camera.position.map(p => p.toFixed(2)).join(', ')}</div>
-                  <div>相机旋转: {sceneSettings.camera.rotation.map(r => r.toFixed(2)).join(', ')}°</div>
-                  <div>目标点: {sceneSettings.camera.target.map(t => t.toFixed(2)).join(', ')}</div>
-                  <div>控制器启用: {orbitControlsEnabled ? '是' : '否'}</div>
+                  <div>Camera Position: {sceneSettings.camera.position.map(p => p.toFixed(2)).join(', ')}</div>
+                  <div>Camera Rotation: {sceneSettings.camera.rotation.map(r => r.toFixed(2)).join(', ')}°</div>
+                  <div>Target Point: {sceneSettings.camera.target.map(t => t.toFixed(2)).join(', ')}</div>
+                  <div>Orbit Controls Enabled: {orbitControlsEnabled ? 'Yes' : 'No'}</div>
                 </div>
               )}
             </div>
@@ -1692,6 +1749,3 @@ export default function ModelScene() {
     </div>
   );
 }
-
-// 预加载默认模型
-useGLTF.preload("/earth.glb");
