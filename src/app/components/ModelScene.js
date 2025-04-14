@@ -601,19 +601,19 @@ export default function ModelScene() {
   const [modelUrl, setModelUrl] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // 更新配置状态，修改默认背景颜色
+  // Update configuration state, modify default background color
   const [config, setConfig] = useState({
-    // Display 设置
-    background: true, // 默认显示背景
+    // Display settings
+    background: true, // Default display background
     autoRotate: false,
     wireframe: false,
     skeleton: false,
     grid: false,
     screenSpacePanning: true,
     pointSize: 1,
-    bgColor: "#2f2f2f", // 修改默认背景颜色为 #2f2f2f
+    bgColor: "#2f2f2f", // Change default background color to #2f2f2f
 
-    // Lighting 设置
+    // Lighting settings
     environment: "Neutral",
     toneMapping: "Linear",
     exposure: 0,
@@ -623,14 +623,14 @@ export default function ModelScene() {
     directIntensity: 2.5,
     directColor: "#ffffff",
 
-    // Performance 设置
+    // Performance settings
     shadows: false,
     kiosk: false,
     showStats: true,
     showDebug: false,
   });
 
-  // 更新配置的处理函数
+  // Update configuration handler function
   const handleConfigChange = (key, value) => {
     setConfig((prev) => ({
       ...prev,
@@ -638,15 +638,15 @@ export default function ModelScene() {
     }));
   };
 
-  // 动画相关状态
+  // Animation related states
   const [animations, setAnimations] = useState([]);
   const [currentAnimation, setCurrentAnimation] = useState(null);
   const [isPlaying, setIsPlaying] = useState('playing'); // 'playing' | 'paused' | 'stopped'
 
-  // 添加控制器启用状态
+  // Add controller enable state
   const [orbitControlsEnabled, setOrbitControlsEnabled] = useState(true);
 
-  // 修改模型加载处理函数
+  // Modify model loading handler function
   const handleModelLoad = (settings, onComplete) => {
     console.log(settings, 'settings')
     if (settings?.camera) {
@@ -669,7 +669,7 @@ export default function ModelScene() {
           );
           controlsRef.current.update();
 
-          // 在相机更新完成后调用回调
+          // Call callback after camera update is complete
           if (onComplete) {
             onComplete();
           }
@@ -677,27 +677,27 @@ export default function ModelScene() {
       });
     }
 
-    // 检查并设置动画列表
+    // Check and set animation list
     if (settings?.animations) {
       console.log('Setting animations:', settings.animations);
       setAnimations(settings.animations);
     }
   };
 
-  // 相机控制函数
+  // Camera control function
   const updateCamera = (updates) => {
     setSceneSettings(prev => {
-      // 处理数值精度问题
+      // Handle numerical precision issues
       const processedUpdates = { ...updates };
 
-      // 对旋转角度进行舍入处理
+      // Round rotation angles
       if (processedUpdates.rotation) {
         processedUpdates.rotation = processedUpdates.rotation.map(val =>
           Math.round(val * 100) / 100
         );
       }
 
-      // 对位置进行舍入处理
+      // Round position values
       if (processedUpdates.position) {
         processedUpdates.position = processedUpdates.position.map(val =>
           Math.round(val * 100) / 100
@@ -714,7 +714,7 @@ export default function ModelScene() {
     });
   };
 
-  // 添加拖拽处理函数
+  // Add drag and drop handler functions
   const handleDragOver = (e) => {
     e.preventDefault();
     setIsDragging(true);
@@ -737,15 +737,15 @@ export default function ModelScene() {
     }
   };
 
-  // 文件上传处理函数
+  // File upload handler function
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
-      // 创建一个临时 URL
+      // Create a temporary URL
       const objectUrl = URL.createObjectURL(file);
       setModelUrl(objectUrl);
 
-      // 清理之前的 URL
+      // Clean up previous URL
       return () => URL.revokeObjectURL(objectUrl);
     }
   };
@@ -762,7 +762,7 @@ export default function ModelScene() {
     }
   }, []);
 
-  // 处理进度条变化
+  // Handle progress bar changes
   const handleProgressChange = (value) => {
     setProgress(value);
     if (modelRef.current) {
@@ -770,7 +770,7 @@ export default function ModelScene() {
     }
   };
 
-  // 处理鼠标滚轮事件
+  // Handle mouse wheel events
   const handleWheel = (e) => {
     if (currentAnimation) {
       e.preventDefault();
@@ -780,39 +780,37 @@ export default function ModelScene() {
     }
   };
 
-  // 简化的相机旋转处理函数 - 仅控制旋转，不做其他自动调整
+  // Simplified camera rotation handler function - only controls rotation, no other automatic adjustments
   const handleCameraRotation = (rotationValues) => {
-    // 禁用 OrbitControls 以防止干扰
+    // Disable OrbitControls to prevent interference
     setOrbitControlsEnabled(false);
 
-    // 重要：更新状态，确保UI与实际相机状态同步
+    // Important: Update state to ensure UI syncs with actual camera state
     updateCamera({ rotation: rotationValues });
 
     if (cameraRef.current) {
-      // 保存当前相机位置
+      // Save current camera position
       const currentPosition = cameraRef.current.position.clone();
-      console.log('当前', cameraRef.current.rotation)
-      console.log("新的", THREE.MathUtils.degToRad(rotationValues[0]), THREE.MathUtils.degToRad(rotationValues[1]), THREE.MathUtils.degToRad(rotationValues[2]))
+      console.log('Current', cameraRef.current.rotation)
+      console.log("New", THREE.MathUtils.degToRad(rotationValues[0]), THREE.MathUtils.degToRad(rotationValues[1]), THREE.MathUtils.degToRad(rotationValues[2]))
 
-      // 设置精确的旋转角度
+      // Set precise rotation angles
       cameraRef.current.rotation.set(
         THREE.MathUtils.degToRad(rotationValues[0]),
         THREE.MathUtils.degToRad(rotationValues[1]),
         THREE.MathUtils.degToRad(rotationValues[2])
       );
 
-      // 重要：确保位置保持不变（通常旋转会影响位置计算）
+      // Important: Ensure position remains unchanged (rotation usually affects position calculation)
       cameraRef.current.position.copy(currentPosition);
 
-      // 重要：更新投影矩阵，应用变更
+      // Important: Update projection matrix, apply changes
       cameraRef.current.updateProjectionMatrix();
-
-      // 确保控制器不会干扰设置的相机参数
       // if (controlsRef.current) {
       //   controlsRef.current.update();
       // }
 
-      console.log('相机旋转已更新为:', rotationValues, '实际旋转:', [
+      console.log('camera rotation updated to:', rotationValues, 'actual rotation:', [
         THREE.MathUtils.radToDeg(cameraRef.current.rotation.x),
         THREE.MathUtils.radToDeg(cameraRef.current.rotation.y),
         THREE.MathUtils.radToDeg(cameraRef.current.rotation.z)
@@ -820,68 +818,59 @@ export default function ModelScene() {
     }
   };
 
-  // 修改 handleTargetChange 函数，使其只改变目标点不影响相机旋转
+  // Modify handleTargetChange function to only change target point without affecting camera rotation
   const handleTargetChange = (targetValues) => {
-    // 暂时禁用 OrbitControls
+    // Disable OrbitControls to prevent interference
     setOrbitControlsEnabled(false);
 
-    // 只更新目标点状态，不计算相机旋转
+    // Only update target point state, do not calculate camera rotation
     updateCamera({ target: targetValues });
 
     if (controlsRef.current) {
-      // 只更新控制器的目标点
       controlsRef.current.target.set(targetValues[0], targetValues[1], targetValues[2]);
       controlsRef.current.update();
     }
   };
-
-  // 添加一个专门处理相机位置的函数
   const handlePositionChange = (positionValues) => {
-    // 暂时禁用 OrbitControls
     setOrbitControlsEnabled(false);
-
-    // 只更新位置状态
     updateCamera({ position: positionValues });
 
     if (cameraRef.current) {
-      // 直接设置相机位置
       cameraRef.current.position.set(positionValues[0], positionValues[1], positionValues[2]);
       cameraRef.current.updateProjectionMatrix();
     }
   };
 
-  // 添加一个按钮处理函数用于手动切换 OrbitControls
+  // Add a button handler function for manually toggling OrbitControls
   const toggleOrbitControls = () => {
     setOrbitControlsEnabled(prev => !prev);
   };
 
-  // 修复 useEffect 中的事件监听逻辑
+  // Fix event listening logic in useEffect
   useEffect(() => {
     const controls = controlsRef.current;
     if (!controls) return;
 
-    // 设置控制器的启用状态
+    // Set the enabled state of the controller
     controls.enabled = orbitControlsEnabled;
 
-    // 如果禁用了控制器，我们应该阻止它影响相机
+    // If controls are disabled, we should prevent it from affecting the camera
     if (!orbitControlsEnabled) {
-      // 禁用所有控制器功能
+      // Disable all controller features
       controls.enablePan = false;
       controls.enableZoom = false;
       controls.enableRotate = false;
       controls.enabled = false;
       controls.update();
-      return; // 不再添加任何事件监听
+      return;
     } else {
-      // 重新启用控制器功能
+      // Re-enable controller features
       controls.enablePan = true;
       controls.enableZoom = true;
       controls.enableRotate = true && !config.kiosk;
       controls.enabled = true;
       controls.update();
     }
-
-    // 定义事件处理函数
     const handleChange = () => {
       if (!cameraRef.current || !orbitControlsEnabled) return;
 
@@ -889,8 +878,6 @@ export default function ModelScene() {
       const position = camera.position.clone();
       const rotation = camera.rotation.clone();
       const target = controls.target.clone();
-
-      // // 计算方向和旋转
       // const lookDirection = new THREE.Vector3();
       // lookDirection.subVectors(target, position).normalize();
 
@@ -906,8 +893,6 @@ export default function ModelScene() {
         THREE.MathUtils.radToDeg(rotation.y),
         THREE.MathUtils.radToDeg(rotation.z)
       ];
-
-      // 仅在控制器启用时更新状态
       setSceneSettings(prev => ({
         ...prev,
         camera: {
@@ -920,40 +905,28 @@ export default function ModelScene() {
     };
 
     controls.addEventListener('change', handleChange);
-
-    // 清理函数
     return () => {
       controls.removeEventListener('change', handleChange);
     };
   }, [controlsRef.current, orbitControlsEnabled, config.kiosk]);
-
-  // 简化相机初始化同步逻辑
   useEffect(() => {
     console.log("检查相机状态", {
       cameraRef: !!cameraRef.current,
       controlsRef: !!controlsRef.current
     });
-
-    // 检查引用是否存在
     if (!cameraRef.current || !controlsRef.current) {
-      return; // 如果引用不存在，直接返回
+      return;
     }
 
     console.log("开始初始化相机状态");
 
     const camera = cameraRef.current;
     const controls = controlsRef.current;
-
-    // 获取相机位置和目标点
     const position = camera.position.clone();
     const rotation = camera.rotation.clone();
     const target = controls.target.clone();
-
-    // 计算从相机到目标点的方向
     // const lookDirection = new THREE.Vector3();
     // lookDirection.subVectors(target, position).normalize();
-
-    // // 计算欧拉角
     // const euler = new THREE.Euler(0, 0, 0, 'XYZ');
     // euler.y = Math.atan2(lookDirection.x, lookDirection.z);
     // euler.x = Math.atan2(
@@ -961,14 +934,13 @@ export default function ModelScene() {
     //   Math.sqrt(lookDirection.x * lookDirection.x + lookDirection.z * lookDirection.z)
     // );
 
-    // 转换为角度
+
     const rotationDeg = [
       THREE.MathUtils.radToDeg(rotation.x),
       THREE.MathUtils.radToDeg(rotation.y),
       THREE.MathUtils.radToDeg(rotation.z)
     ];
 
-    // 更新状态
     setSceneSettings(prev => ({
       ...prev,
       camera: {
@@ -979,7 +951,7 @@ export default function ModelScene() {
       }
     }));
 
-    console.log('初始化相机状态完成:', {
+    console.log('camera init', {
       position: [position.x, position.y, position.z],
       target: [target.x, target.y, target.z],
       rotation: rotationDeg
@@ -990,36 +962,36 @@ export default function ModelScene() {
   const resetCameraToViewTarget = () => {
     if (!cameraRef.current || !controlsRef.current) return;
 
-    // 获取当前目标点
+    // Get current target point
     const target = controlsRef.current.target.clone();
 
-    // 保持当前距离或设置一个合理距离
+    // Keep current distance or set a reasonable distance
     const currentDistance = cameraRef.current.position.distanceTo(target);
     const distance = currentDistance > 0 ? currentDistance : 10;
 
-    // 设置一个默认视角
-    const defaultRotation = [0, 0, 0]; // 可以根据需要调整
+    // Set a default perspective
+    const defaultRotation = [0, 0, 0]; // Can be adjusted as needed
 
-    // 计算新位置
+    // Calculate new position
     const position = [
       Math.round((target.x + 0) * 100) / 100,
       Math.round((target.y + distance * 0.5) * 100) / 100,
       Math.round((target.z + distance) * 100) / 100
     ];
 
-    // 更新相机
+    // Update camera
     updateCamera({
       position,
       rotation: defaultRotation
     });
 
-    // 设置相机
+    // Set camera
     cameraRef.current.position.set(position[0], position[1], position[2]);
     cameraRef.current.lookAt(target);
     cameraRef.current.updateProjectionMatrix();
     const rotation = cameraRef.current.rotation.clone();
 
-    // 转换为角度
+    // Convert to degrees
     const rotationDeg = [
       THREE.MathUtils.radToDeg(rotation.x),
       THREE.MathUtils.radToDeg(rotation.y),
@@ -1030,10 +1002,10 @@ export default function ModelScene() {
       rotation: rotationDeg
     });
 
-    // 重新启用控制器
+    // Re-enable controller
     setOrbitControlsEnabled(true);
 
-    console.log("相机已重置为观察目标");
+    console.log("Camera has been reset to observe target");
   };
 
   const getCameraData = () => {
@@ -1050,7 +1022,7 @@ export default function ModelScene() {
     >
       <div className="w-full h-full">
         {!modelUrl ? (
-          // 当没有模型时显示上传区域
+          // Display upload area when no model is loaded
           <div 
             className={`w-full h-full flex flex-col justify-center items-center ${isDragging ? 'bg-[#1a1a1a]' : 'bg-[#121316]'}`}
             onDragOver={handleDragOver}
@@ -1187,7 +1159,7 @@ export default function ModelScene() {
         style={{ width: '280px' }}
       >
         <div ref={controlPanelRef} className="w-full h-full flex flex-col">
-          {/* 顶部固定区域 */}
+          {/* Top fixed area */}
           <div className="w-full p-4 border-b border-white/5">
             <div className="space-y-2 mt-2">
               <label className="flex flex-col items-center px-4 py-2 bg-[rgba(255,255,255,0.05)] rounded-lg text-[rgba(255,255,255,0.5)] text-[11px] text-white cursor-pointer hover:bg-[rgba(255,255,255,0.03)]">
@@ -1210,9 +1182,9 @@ export default function ModelScene() {
             </div>
           </div>
 
-          {/* 滚动区域 */}
+          {/* Scrollable area */}
           <div className="w-full flex-1 overflow-y-auto overflow-x-hidden">
-            {/* 添加一个按钮切换 OrbitControls 的启用状态 */}
+            {/* Add a button to toggle OrbitControls enabled state */}
             <div className="p-4 text-[rgba(255,255,255,0.6)] hover:bg-[rgba(255,255,255,0.03)] border-b border-[rgba(255,255,255,0.05)] last:border-b-0 relative">
               <label className="flex items-center text-[11px] text-[rgba(255,255,255,0.6)] overflow-hidden truncate whitespace-nowrap">
                 <input
@@ -1225,7 +1197,7 @@ export default function ModelScene() {
               </label>
             </div>
 
-            {/* 模型控制 */}
+            {/* Model control */}
             <div className="p-4 text-[rgba(255,255,255,0.6)] hover:bg-[rgba(255,255,255,0.03)] border-b border-[rgba(255,255,255,0.05)] last:border-b-0 relative">
               <h3 className="mb-3 font-semibold leading-4 tracking-[.01em] text-[rgba(255,255,255,0.9)] text-[11px]">Model</h3>
               <div className="w-full flex gap-1">
@@ -1259,7 +1231,7 @@ export default function ModelScene() {
                 />
               </div>
 
-              {/* 添加位置控制 */}
+              {/* Add position control */}
               <div className="w-full flex gap-1 mt-2">
                 <div className="flex items-center text-[11px] text-[rgba(255,255,255,0.6)] overflow-hidden truncate whitespace-nowrap max-w-[80px] min-w-[80px]">position</div>
                 <NumericInput
@@ -1283,7 +1255,7 @@ export default function ModelScene() {
               </div>
             </div>
 
-            {/* 相机控制 */}
+            {/* Camera control */}
             <div className="p-4 text-[rgba(255,255,255,0.6)] hover:bg-[rgba(255,255,255,0.03)] border-b border-[rgba(255,255,255,0.05)] last:border-b-0 relative">
               <h3 className="mb-3 font-semibold leading-4 tracking-[.01em] text-[rgba(255,255,255,0.9)] text-[11px]">Camera</h3>
               <div className="w-full flex flex-col gap-1">
@@ -1392,7 +1364,7 @@ export default function ModelScene() {
                   />
                 </div>
               </div>
-              {/* 在相机控制面板中添加重置按钮 */}
+              {/* Add reset button in camera control panel */}
               <div className="w-full flex gap-1 mt-2">
                 <button
                   onClick={resetCameraToViewTarget}
@@ -1410,7 +1382,7 @@ export default function ModelScene() {
               </div>
             </div>
 
-            {/* 调试开关 */}
+            {/* Debug toggle */}
             <div className="p-4 text-[rgba(255,255,255,0.6)] hover:bg-[rgba(255,255,255,0.03)] border-b border-[rgba(255,255,255,0.05)] last:border-b-0 relative">
               <label className="flex items-center text-[11px] text-[rgba(255,255,255,0.6)] overflow-hidden truncate whitespace-nowrap">
                 <input
@@ -1422,7 +1394,7 @@ export default function ModelScene() {
                 Show Debug Information
               </label>
 
-              {/* 调试信息 */}
+              {/* Debug information */}
               {config.showDebug && (
                 <div className="p-4 text-[rgba(255,255,255,0.6)] text-[11px]">
                   <div>Camera Position: {sceneSettings.camera.position.map(p => p.toFixed(2)).join(', ')}</div>
@@ -1433,7 +1405,7 @@ export default function ModelScene() {
               )}
             </div>
 
-            {/* 灯光设置 */}
+            {/* Lighting settings */}
             <div className="p-4 text-[rgba(255,255,255,0.6)] hover:bg-[rgba(255,255,255,0.03)] border-b border-[rgba(255,255,255,0.05)] last:border-b-0 relative">
               <h3 className="mb-3 font-semibold leading-4 tracking-[.01em] text-[rgba(255,255,255,0.9)] text-[11px]">Lighting</h3>
               <div className="w-full space-y-4">
@@ -1541,7 +1513,7 @@ export default function ModelScene() {
               </div>
             </div>
 
-            {/* 显示设置 */}
+            {/* Display settings */}
             <div className="p-4 text-[rgba(255,255,255,0.6)] hover:bg-[rgba(255,255,255,0.03)] border-b border-[rgba(255,255,255,0.05)] last:border-b-0 relative">
               <h3 className="mb-3 font-semibold leading-4 tracking-[.01em] text-[rgba(255,255,255,0.9)] text-[11px]">Display</h3>
               <div className="w-full flex flex-col gap-1">
@@ -1651,7 +1623,7 @@ export default function ModelScene() {
               </div>
             </div>
 
-            {/* 性能监控 */}
+            {/* Performance monitoring */}
             <div className="p-4 text-[rgba(255,255,255,0.6)] hover:bg-[rgba(255,255,255,0.03)] border-b border-[rgba(255,255,255,0.05)] last:border-b-0 relative">
               <h3 className="mb-3 font-semibold leading-4 tracking-[.01em] text-[rgba(255,255,255,0.9)] text-[11px]">Performance</h3>
               <div className="w-full flex gap-1">
@@ -1663,7 +1635,7 @@ export default function ModelScene() {
               </div>
             </div>
 
-            {/* 动画控制 */}
+            {/* Animation control */}
             {animations.length > 0 && (
               <div className="p-4 text-[rgba(255,255,255,0.6)] hover:bg-[rgba(255,255,255,0.03)] border-b border-[rgba(255,255,255,0.05)] last:border-b-0 relative">
                 <h3 className="mb-3 font-semibold leading-4 tracking-[.01em] text-[rgba(255,255,255,0.9)] text-[11px]">Animation Control</h3>
@@ -1687,7 +1659,7 @@ export default function ModelScene() {
                       ))}
                     </select>
 
-                    {/* 动画控制按钮组 */}
+                    {/* Animation control button group */}
                     {currentAnimation && (
                       <div className="flex gap-2 mt-2">
                         <button
@@ -1721,7 +1693,7 @@ export default function ModelScene() {
                     )}
                   </div>
 
-                  {/* 添加进度控制 */}
+                  {/* Add progress control */}
                   {currentAnimation && (
                     <div className="flex items-center"
                       onWheel={handleWheel}
