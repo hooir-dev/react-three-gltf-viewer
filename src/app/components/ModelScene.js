@@ -34,8 +34,6 @@ const Model = forwardRef(function Model({
   const [isInitialized, setIsInitialized] = useState(false);
   const hasLoaded = useRef(false);
   const [isVisible, setIsVisible] = useState(false);
-
-  // 当 modelUrl 改变时重置加载状态
   useEffect(() => {
     hasLoaded.current = false;
     setIsVisible(false);
@@ -45,10 +43,8 @@ const Model = forwardRef(function Model({
     if (!hasLoaded.current) {
       hasLoaded.current = true;
 
-      // 保持材质的原始属性，不做任何修改
       gltf.scene.traverse((node) => {
         if (node.isMesh && node.material) {
-          // 只设置更新标志
           node.material.needsUpdate = true;
         }
       });
@@ -58,21 +54,16 @@ const Model = forwardRef(function Model({
       if (gltf) {
         console.log("GLTF Data:", gltf);
 
-        // 获取场景设置
         if (gltf.cameras?.[0]) {
           const camera = gltf.cameras[0];
           console.log("Camera data:", camera);
 
-          // 获取相机的世界变换
           camera.updateMatrixWorld();
           const position = new THREE.Vector3();
           const target = new THREE.Vector3();
           const quaternion = new THREE.Quaternion();
 
-          // 获取相机位置
           camera.getWorldPosition(position);
-
-          // 获取相机朝向
           camera.getWorldQuaternion(quaternion);
           const direction = new THREE.Vector3(0, 0, -1);
           direction.applyQuaternion(quaternion);
@@ -88,7 +79,6 @@ const Model = forwardRef(function Model({
               zoom: camera.zoom,
             },
 
-            // 灯光设置
             lights: gltf.scene.children
               .filter((child) => child.isLight || child.type.includes("Light"))
               .map((light) => ({
@@ -104,14 +94,12 @@ const Model = forwardRef(function Model({
                 decay: light.decay,
               })),
 
-            // 场景设置
             scene: {
               background: gltf.scene.background,
               environment: gltf.scene.environment,
               fog: gltf.scene.fog,
             },
 
-            // 添加动画信息
             animations: gltf.animations.map(anim => anim.name || '未命名动画')
           };
 
@@ -119,7 +107,6 @@ const Model = forwardRef(function Model({
         }
       }
 
-      // 如果没有找到相机参数，使用默认计算逻辑
       if (!sceneSettings?.camera) {
         console.log("No camera found in model, using calculated position");
         const box = new THREE.Box3().setFromObject(gltf.scene);
@@ -131,8 +118,8 @@ const Model = forwardRef(function Model({
         const cameraDistance = maxDim / (2 * Math.tan((fov * Math.PI) / 360));
 
         const distance = cameraDistance * 1.2;
-        const verticalAngle = Math.PI / 6; // 30度俯视角
-        const horizontalAngle = (Math.PI * 3) / 4; // 135度水平旋转
+        const verticalAngle = Math.PI / 6;
+        const horizontalAngle = (Math.PI * 3) / 4;
 
         const height = distance * Math.sin(verticalAngle);
         const radius = distance * Math.cos(verticalAngle);
@@ -153,18 +140,15 @@ const Model = forwardRef(function Model({
             environment: null,
             fog: null,
           },
-          // 添加动画信息
           animations: gltf.animations.map(anim => anim.name || '未命名动画')
         };
 
-        // 调整模型位置
         gltf.scene.position.x = -center.x;
         gltf.scene.position.y = -center.y;
         gltf.scene.position.z = -center.z;
         console.log("sceneSettings", sceneSettings);
       }
 
-      // 先更新相机，再显示模型
       requestAnimationFrame(() => {
         onLoad(sceneSettings, () => {
           setIsVisible(true);
@@ -173,14 +157,11 @@ const Model = forwardRef(function Model({
     }
   }, [gltf, onLoad, modelUrl]);
 
-  // 应用材质设置
   useEffect(() => {
     if (gltf.scene) {
       gltf.scene.traverse((child) => {
         if (child.isMesh) {
-          // 应用线框模式
           child.material.wireframe = config.wireframe;
-          // 应用点大小
           if (child.material.size !== undefined) {
             child.material.size = config.pointSize;
           }
@@ -189,7 +170,6 @@ const Model = forwardRef(function Model({
     }
   }, [config.wireframe, config.pointSize, gltf.scene]);
 
-  // 当模型加载完成时自动播放第一个动画
   useEffect(() => {
     if (gltf.animations && gltf.animations.length > 0 && actions && !isInitialized) {
       console.log('Available animations:', gltf.animations);
@@ -198,7 +178,6 @@ const Model = forwardRef(function Model({
       onPlayingChange(true);
       setIsInitialized(true);
 
-      // 立即播放第一个动画
       if (actions[firstAnimation]) {
         const action = actions[firstAnimation];
         action.reset().play();
@@ -207,7 +186,6 @@ const Model = forwardRef(function Model({
     }
   }, [gltf.animations, actions, isInitialized, onAnimationChange, onPlayingChange]);
 
-  // 处理动画状态
   useEffect(() => {
     if (!actions || !isInitialized) return;
 
@@ -217,21 +195,17 @@ const Model = forwardRef(function Model({
       const action = actions[currentAnimation];
 
       if (isPlaying === 'playing') {
-        // 播放动画
         action.paused = false;
         action.play();
       } else if (isPlaying === 'paused') {
-        // 暂停动画
         action.paused = true;
       } else if (isPlaying === 'stopped') {
-        // 停止动画并重置
         action.stop();
         action.reset();
       }
     }
   }, [actions, currentAnimation, isPlaying, isInitialized]);
 
-  // 在组件卸载时停止所有动画
   useEffect(() => {
     return () => {
       if (actions) {
@@ -246,7 +220,6 @@ const Model = forwardRef(function Model({
     };
   }, [actions]);
 
-  // 修改骨骼检查函数
   const hasSkeleton = (object) => {
     if (!object) {
       console.warn("No object provided to hasSkeleton check");
@@ -257,27 +230,22 @@ const Model = forwardRef(function Model({
     console.log("Checking skeleton for:", object);
 
     try {
-      // 检查是否有骨骼动画
       if (object.animations && object.animations.length > 0) {
         console.log("Found animations:", object.animations);
         found = true;
       }
 
-      // 遍历场景
       object.traverse((child) => {
-        // 打印每个子对象的类型
         console.log("Child type:", child.type);
 
         if (child.type === "Bone" || child.type === "SkinnedMesh") {
           console.log("Found skeleton component:", child.type);
           found = true;
         }
-        // 检查是否有骨骼或蒙皮网格
         if (child.isBone || child.isSkinnedMesh) {
           console.log("Found skeleton component via is check:", child.type);
           found = true;
         }
-        // 检查是否有骨骼数据
         if (child.skeleton) {
           console.log("Found skeleton data:", child.skeleton);
           found = true;
@@ -292,14 +260,12 @@ const Model = forwardRef(function Model({
     return found;
   };
 
-  // 添加进度控制
   const handleProgress = (progress) => {
     if (currentAnimation && actions[currentAnimation]) {
       const action = actions[currentAnimation];
       const duration = action.getClip().duration;
       action.time = duration * progress;
 
-      // 如果动画是暂停状态，需要手动更新
       if (action.paused) {
         action.play();
         action.paused = true;
@@ -307,7 +273,6 @@ const Model = forwardRef(function Model({
     }
   };
 
-  // 暴露进度控制给父组件
   useImperativeHandle(ref, () => ({
     handleProgress,
     getDuration: () => {
@@ -332,9 +297,7 @@ const Model = forwardRef(function Model({
       ]}
       position={position}
     >
-      {/* 根据配置显示辅助线 */}
       {config.grid && <gridHelper args={[10, 10, "red", "white"]} />}
-      {/* 只在模型有骨骼时显示骨骼辅助器 */}
       {config.skeleton && gltf.scene && <skeletonHelper args={[gltf.scene]} />}
 
       <primitive
@@ -347,7 +310,6 @@ const Model = forwardRef(function Model({
   );
 });
 
-// 定义环境列表
 const environments = [
   {
     id: "",
@@ -373,26 +335,22 @@ const environments = [
   },
 ];
 
-// 修改 Scene 组件来处理环境
 function Scene({ config }) {
   const { scene, gl } = useThree();
 
   useEffect(() => {
-    // 处理背景色
     if (config.background) {
       scene.background = new THREE.Color(config.bgColor);
     } else {
       scene.background = null;
     }
 
-    // 处理环境
     const environment = environments.find(
       (env) => env.id === config.environment
     );
 
     if (environment) {
       if (environment.id === "neutral") {
-        // 使用 RoomEnvironment
         const pmremGenerator = new THREE.PMREMGenerator(gl);
         const roomEnvironment = new RoomEnvironment();
         const envMap = pmremGenerator.fromScene(roomEnvironment).texture;
@@ -402,7 +360,6 @@ function Scene({ config }) {
         pmremGenerator.dispose();
         roomEnvironment.dispose();
       } else if (environment.path) {
-        // 加载外部环境贴图
         new EXRLoader().load(environment.path, (texture) => {
           const pmremGenerator = new THREE.PMREMGenerator(gl);
           const envMap = pmremGenerator.fromEquirectangular(texture).texture;
@@ -421,7 +378,6 @@ function Scene({ config }) {
   return null;
 }
 
-// Canvas 内部的性能统计更新组件
 function PerformanceStatsUpdater({ stats }) {
   useFrame(() => {
     if (stats) {
@@ -432,13 +388,11 @@ function PerformanceStatsUpdater({ stats }) {
   return null;
 }
 
-// 控制面板中的性能统计显示组件
 function PerformanceStatsDisplay({ stats, setStats, showStats }) {
   const statsRef = useRef(null);
 
   useEffect(() => {
     if (showStats && !stats) {
-      // 先清空容器
       if (statsRef.current) {
         while (statsRef.current.firstChild) {
           statsRef.current.removeChild(statsRef.current.firstChild);
@@ -446,22 +400,18 @@ function PerformanceStatsDisplay({ stats, setStats, showStats }) {
       }
 
       const newStats = new Stats();
-      // 设置统计面板的样式
+
       newStats.dom.style.cssText = "position:relative;display:flex;flex-wrap:wrap;";
-      // 修改高度以显示所有面板
       newStats.dom.height = "48px";
-      // 确保所有子面板都显示
       [].forEach.call(newStats.dom.children, (child) => {
         child.style.display = "";
       });
 
-      // 添加到控制面板中的容器
       if (statsRef.current) {
         statsRef.current.appendChild(newStats.dom);
         setStats(newStats);
       }
     } else if (!showStats && stats) {
-      // 移除旧的统计面板
       if (statsRef.current && stats.dom.parentNode === statsRef.current) {
         statsRef.current.removeChild(stats.dom);
       }
@@ -486,8 +436,6 @@ function NumericInput({ label, value, onChange, step = 1, unit = '', className =
     currentValue: value
   });
   const inputRef = useRef(null);
-
-  // 当外部值变化且不在输入状态时，更新显示值
   useEffect(() => {
     if (!isFocused) {
       setInputText(value.toFixed(2));
@@ -505,7 +453,7 @@ function NumericInput({ label, value, onChange, step = 1, unit = '', className =
     };
     setIsDragging(true);
     setIsActive(true);
-    document.body.style.cursor = 'ew-resize'; // 设置全局光标样式
+    document.body.style.cursor = 'ew-resize';
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
@@ -524,7 +472,7 @@ function NumericInput({ label, value, onChange, step = 1, unit = '', className =
     dragStateRef.current.isDragging = false;
     setIsDragging(false);
     setIsActive(false);
-    document.body.style.cursor = ''; // 恢复默认光标样式
+    document.body.style.cursor = '';
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
   }
@@ -533,7 +481,6 @@ function NumericInput({ label, value, onChange, step = 1, unit = '', className =
     setIsActive(false);
     setIsFocused(false);
 
-    // 失去焦点时提交数值
     const numValue = parseFloat(inputText) || 0;
     onChange(numValue);
   };
@@ -559,7 +506,6 @@ function NumericInput({ label, value, onChange, step = 1, unit = '', className =
         type="text"
         value={isFocused ? inputText : Number(value).toFixed(2)}
         onChange={(e) => {
-          // 设置输入文本，但不立即转换为数值
           setInputText(e.target.value);
         }}
         onBlur={handleInputBlur}
@@ -727,7 +673,7 @@ export default function ModelScene() {
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
       if (file.name.toLowerCase().endsWith('.glb')) {
@@ -1008,12 +954,29 @@ export default function ModelScene() {
     console.log("Camera has been reset to observe target");
   };
 
+  const [showCameraInfo, setShowCameraInfo] = useState(false);
+  const [cameraInfo, setCameraInfo] = useState({
+    position: [0, 0, 0],
+    rotation: [0, 0, 0],
+    actualRotation: [0, 0, 0]
+  });
+
   const getCameraData = () => {
     if (!cameraRef.current || !controlsRef.current) return;
 
-    console.log('position', cameraRef.current.position)
-    console.log('sceneSettings.camera.rotation', sceneSettings.camera.rotation)
-    console.log('rotation', cameraRef.current.rotation, THREE.MathUtils.radToDeg(cameraRef.current.rotation.x), THREE.MathUtils.radToDeg(cameraRef.current.rotation.y), THREE.MathUtils.radToDeg(cameraRef.current.rotation.z))
+    const position = cameraRef.current.position;
+    const rotation = cameraRef.current.rotation;
+    setCameraInfo({
+      position: [position.x, position.y, position.z],
+      rotation: sceneSettings.camera.rotation || [0, 0, 0],
+      actualRotation: [
+        THREE.MathUtils.radToDeg(rotation.x),
+        THREE.MathUtils.radToDeg(rotation.y),
+        THREE.MathUtils.radToDeg(rotation.z)
+      ]
+    });
+
+    setShowCameraInfo(true);
   };
 
   return (
@@ -1021,7 +984,7 @@ export default function ModelScene() {
       <div className="w-full h-full">
         {!modelUrl ? (
           // Display upload area when no model is loaded
-          <div 
+          <div
             className={`w-full h-full flex flex-col justify-center items-center ${isDragging ? 'bg-[#1a1a1a]' : 'bg-[#121316]'}`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -1170,7 +1133,7 @@ export default function ModelScene() {
                 />
               </label>
               {modelUrl && (
-                <button 
+                <button
                   onClick={() => setModelUrl(null)}
                   className="w-full mt-2 px-4 py-2 bg-[rgba(255,255,255,0.05)] rounded-lg text-[rgba(255,255,255,0.5)] text-[11px] hover:bg-[rgba(255,0,0,0.2)]"
                 >
@@ -1725,10 +1688,77 @@ export default function ModelScene() {
         className="fixed bottom-4 left-4 text-[rgba(255,255,255,0.4)] text-sm hover:text-[rgba(255,255,255,0.6)] transition-colors duration-200 flex items-center gap-2 z-10"
       >
         <svg height="20" width="20" viewBox="0 0 16 16" className="fill-current">
-          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
         </svg>
         View on GitHub
       </a>
+
+      {/* 相机信息弹窗 */}
+      {showCameraInfo && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/60 z-40"
+            onClick={() => setShowCameraInfo(false)}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed top-1/2 left-1/2 !-translate-x-1/2 !-translate-y-1/2 z-50 bg-[#121316] p-6 rounded-xl shadow-lg border border-white/5 text-white max-w-lg w-full m-4"
+            style={{ maxHeight: '80vh', overflowY: 'auto' }}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Camera Parameters</h3>
+              <button
+                onClick={() => setShowCameraInfo(false)}
+                className="text-white/50 hover:text-white"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4 text-sm">
+              <div className="space-y-1">
+                <h4 className="font-medium text-white/70">Position:</h4>
+                <pre className="bg-[rgba(255,255,255,0.05)] p-2 rounded font-mono overflow-x-auto">
+                  X: {cameraInfo.position[0].toFixed(4)},
+                  Y: {cameraInfo.position[1].toFixed(4)},
+                  Z: {cameraInfo.position[2].toFixed(4)}
+                </pre>
+              </div>
+
+              <div className="space-y-1">
+                <h4 className="font-medium text-white/70">UI Rotation (degrees):</h4>
+                <pre className="bg-[rgba(255,255,255,0.05)] p-2 rounded font-mono overflow-x-auto">
+                  X: {cameraInfo.rotation[0].toFixed(4)}°,
+                  Y: {cameraInfo.rotation[1].toFixed(4)}°,
+                  Z: {cameraInfo.rotation[2].toFixed(4)}°
+                </pre>
+              </div>
+
+              <div className="space-y-1">
+                <h4 className="font-medium text-white/70">Actual Rotation (degrees):</h4>
+                <pre className="bg-[rgba(255,255,255,0.05)] p-2 rounded font-mono overflow-x-auto">
+                  X: {cameraInfo.actualRotation[0].toFixed(4)}°,
+                  Y: {cameraInfo.actualRotation[1].toFixed(4)}°,
+                  Z: {cameraInfo.actualRotation[2].toFixed(4)}°
+                </pre>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowCameraInfo(false)}
+                className="px-4 py-2 bg-[rgba(255,255,255,0.05)] rounded-lg text-[rgba(255,255,255,0.6)] text-sm hover:bg-[rgb(43,153,255)] hover:text-white transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </motion.div>
+        </>
+      )}
     </div>
   );
 }
